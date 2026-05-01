@@ -1,0 +1,30 @@
+# Project exclude paths
+/.gradle/
+/.idea/
+/build/
+/common/.gradle/
+/common/build/
+/forge/.gradle/
+/forge/build/
+/forge/run/
+
+# IDEs
+*.iml
+*.iws
+.project
+.classpath
+.settings/
+.vscode/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Debug scripts and scratch work
+*.py
+*.patch
+*.sh
+docs/
+investigation_extracted/
+raw/
+release-notes-*.md
