@@ -1,0 +1,183 @@
+package net.countered.smoothf5.mixin;
+
+import net.countered.smoothf5.SmoothF5Config;
+import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.phys.Vec3;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(Camera.class)
+public class CameraMixin {
+    @Unique private Vec3 smooth_f5$smoothPos = Vec3.ZERO;
+    @Unique private Vec3 smooth_f5$smoothVel = Vec3.ZERO;
+    @Unique private float smooth_f5$smoothYaw;
+    @Unique private float smooth_f5$smoothPitch;
+    @Unique private float smooth_f5$yawVel, smooth_f5$pitchVel;
+
+    @Unique private static final float POS_STIFFNESS = 0.3f;
+    @Unique private static final float POS_DAMPING   = 1f;
+    @Unique private static final float ROT_STIFFNESS = 0.7f;
+    @Unique private static final float ROT_DAMPING   = 1.3f;
+
+    // Transition is "done" once the smoothed pose is within these of target,
+    // OR once MAX_TRANSITION_MS has elapsed (whichever comes first). The timer
+    // cap prevents the smoothing from staying engaged if the user starts
+    // mouse-turning mid-transition: the moving target prevents convergence,
+    // so without the cap the smoothing-induced lag would persist indefinitely.
+    @Unique private static final double POS_EPSILON = 0.05;
+    @Unique private static final float  ROT_EPSILON = 0.5f;
+    @Unique private static final long   MAX_TRANSITION_MS = 500L;
+
+    @Unique private boolean smooth_f5$initialized = false;
+    @Unique private boolean smooth_f5$wasDetached = false;
+    @Unique private boolean smooth_f5$wasMirrored = false;
+
+    // Two distinct transition windows. We smooth ONLY while one of these is
+    // active and exit on convergence (or timer) - outside transitions, the
+    // camera snaps to whatever target the game (or SSR, EpicFight TPS, etc.)
+    // set, so the user doesn't get constant lag stacked on top of those
+    // mods' own lerps.
+    @Unique private boolean smooth_f5$inFpTransition = false; // 3rd -> 1st
+    @Unique private boolean smooth_f5$inTpTransition = false; // any other F5 transition (1st -> 3rd, 3rd back ↔ 3rd front, 3rd front ↔ SSR)
+    @Unique private long    smooth_f5$transitionStartMs = 0L;
+
+    @Inject(method = "setup", at = @At("TAIL"))
+    private void onSetup(BlockGetter level, Entity entity, boolean detached,
+                         boolean thirdPersonReverse, float partialTick,
+                         CallbackInfo ci) {
+        Camera self = (Camera) (Object) this;
+        CameraAccessor acc = (CameraAccessor) self;
+
+        if (!smooth_f5$initialized) {
+            smooth_f5$smoothPos = self.getPosition();
+            smooth_f5$smoothYaw = acc.getYRot();
+            smooth_f5$smoothPitch = acc.getXRot();
+            smooth_f5$initialized = true;
+            smooth_f5$wasDetached = detached;
+            smooth_f5$wasMirrored = thirdPersonReverse;
+            return;
+        }
+
+        // Detect F5 transitions. The smoothed pose from the previous frame is
+        // already at the previous perspective's camera state (since we snap to
+        // target every frame outside transitions), so it serves as the
+        // transition's start pose without any extra capture.
+        //
+        // Track BOTH `detached` and `thirdPersonReverse` (mirrored). With SSR
+        // installed and "vanilla 3rd person back" enabled in its config, the F5
+        // cycle is:
+        //   1st (detached=F)
+        //   → 3rd back        (detached=T, mirrored=F)
+        //   → 3rd front       (detached=T, mirrored=T)
+        //   → SSR             (detached=T, mirrored=F - SSR uses CameraType.THIRD_PERSON_BACK)
+        //   → 1st (detached=F)
+        // Without `mirrored` tracking we'd miss the 3rd-back↔3rd-front and
+        // 3rd-front↔SSR transitions because `detached` stays true through all
+        // three 3rd-person variants.
+        boolean transitionStarted = false;
+        if (smooth_f5$wasDetached && !detached) {
+            // 3rd -> 1st
+            smooth_f5$inFpTransition = true;
+            smooth_f5$inTpTransition = false;
+            transitionStarted = true;
+        } else if (!smooth_f5$wasDetached && detached) {
+            // 1st -> 3rd
+            smooth_f5$inTpTransition = true;
+            smooth_f5$inFpTransition = false;
+            transitionStarted = true;
+        } else if (smooth_f5$wasMirrored != thirdPersonReverse) {
+            // 3rd-person variant change (back ↔ front, or front ↔ SSR which
+            // mirror-flips back to false). Smooth as a "TP transition".
+            smooth_f5$inTpTransition = true;
+            smooth_f5$inFpTransition = false;
+            transitionStarted = true;
+        }
+        smooth_f5$wasDetached = detached;
+        smooth_f5$wasMirrored = thirdPersonReverse;
+
+        if (transitionStarted) {
+            smooth_f5$transitionStartMs = System.currentTimeMillis();
+        }
+
+        boolean inTransition = smooth_f5$inFpTransition || smooth_f5$inTpTransition;
+        double steadyState = SmoothF5Config.steadyStateSmoothness;
+
+        if (!inTransition && steadyState <= 0.0) {
+            // Steady state with smoothing OFF: snap to target so subsequent
+            // mouse turns / position updates from SSR / EF TPS / vanilla don't
+            // get a smoothing lag stacked on top of whatever those mods do.
+            smooth_f5$smoothPos = acc.getPosition();
+            smooth_f5$smoothYaw = acc.getYRot();
+            smooth_f5$smoothPitch = acc.getXRot();
+            smooth_f5$smoothVel = Vec3.ZERO;
+            smooth_f5$yawVel = smooth_f5$pitchVel = 0f;
+            return;
+        }
+
+        Vec3 targetPos = acc.getPosition();
+        float targetYaw = acc.getYRot();
+        float targetPitch = acc.getXRot();
+
+        float dt = Minecraft.getInstance().getDeltaFrameTime();
+
+        // During F5 transitions: full base stiffness/damping (smoothness
+        // ignored - transitions always feel the same). In steady state,
+        // scale the spring's stiffness by the configured smoothness so 0
+        // means snap and 1 means upstream behavior. Damping scales with
+        // sqrt(stiffness) to keep the response shape consistent.
+        float stiffnessScale = inTransition ? 1f : (float) Math.max(0.0, Math.min(1.0, steadyState));
+        float posStiffness = POS_STIFFNESS * stiffnessScale;
+        float posDamping   = POS_DAMPING   * (float) Math.sqrt(stiffnessScale);
+        float rotStiffness = ROT_STIFFNESS * stiffnessScale;
+        float rotDamping   = ROT_DAMPING   * (float) Math.sqrt(stiffnessScale);
+
+        Vec3 diff = targetPos.subtract(smooth_f5$smoothPos);
+        smooth_f5$smoothVel = smooth_f5$smoothVel.add(diff.scale(posStiffness * dt));
+        smooth_f5$smoothVel = smooth_f5$smoothVel.scale((float) Math.exp(-posDamping * dt));
+        smooth_f5$smoothPos = smooth_f5$smoothPos.add(smooth_f5$smoothVel.multiply(dt, dt, dt));
+
+        // Wrap yaw diff so we never spring across the +/-180 boundary the long way.
+        float yawDiff   = Mth.wrapDegrees(targetYaw - smooth_f5$smoothYaw);
+        float pitchDiff = targetPitch - smooth_f5$smoothPitch;
+
+        smooth_f5$yawVel   += yawDiff   * rotStiffness * dt;
+        smooth_f5$pitchVel += pitchDiff * rotStiffness * dt;
+        smooth_f5$yawVel   *= (float) Math.exp(-rotDamping * dt);
+        smooth_f5$pitchVel *= (float) Math.exp(-rotDamping * dt);
+
+        smooth_f5$smoothYaw   += smooth_f5$yawVel   * dt;
+        smooth_f5$smoothPitch += smooth_f5$pitchVel * dt;
+
+        // Exit transition on EITHER convergence or timer cap. Convergence
+        // alone isn't enough: if the user mouse-turns mid-transition, the
+        // target keeps moving and the smoothed pose never settles within the
+        // epsilon → smoothing-induced lag would persist indefinitely. The
+        // timer guarantees the lag window is bounded to MAX_TRANSITION_MS.
+        double posErr = smooth_f5$smoothPos.distanceTo(targetPos);
+        boolean converged = posErr < POS_EPSILON
+                && Math.abs(yawDiff) < ROT_EPSILON
+                && Math.abs(pitchDiff) < ROT_EPSILON;
+        boolean timedOut = (System.currentTimeMillis() - smooth_f5$transitionStartMs) > MAX_TRANSITION_MS;
+        if (inTransition && (converged || timedOut)) {
+            smooth_f5$inFpTransition = false;
+            smooth_f5$inTpTransition = false;
+            smooth_f5$smoothPos = targetPos;
+            smooth_f5$smoothYaw = targetYaw;
+            smooth_f5$smoothPitch = targetPitch;
+            smooth_f5$smoothVel = Vec3.ZERO;
+            smooth_f5$yawVel = smooth_f5$pitchVel = 0f;
+            return;
+        }
+
+        acc.callSetPosition(smooth_f5$smoothPos);
+        acc.setYRot(smooth_f5$smoothYaw);
+        acc.setXRot(smooth_f5$smoothPitch);
+    }
+}
