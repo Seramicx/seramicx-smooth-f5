@@ -1,5 +1,7 @@
 # Smooth F5
 
+![Showcase](assets/showcase.gif)
+
 A small fork of [Smooth F5](https://www.curseforge.com/minecraft/mc-mods/smooth-f5) by Countered with bidirectional smoothing and a few small fixes. Forge 1.20.1.
 
 ## Features (vs upstream)
