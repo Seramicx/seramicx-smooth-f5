@@ -33,11 +33,18 @@ public class CameraMixin {
     // so without the cap the smoothing-induced lag would persist indefinitely.
     @Unique private static final double POS_EPSILON = 0.05;
     @Unique private static final float  ROT_EPSILON = 0.5f;
-    @Unique private static final long   MAX_TRANSITION_MS = 500L;
+    @Unique private static final long   MAX_TRANSITION_MS = 1000L;
+    // Target must move less than this between consecutive frames to count as
+    // "settled". Without this, smooth-f5 can converge to a transient target
+    // value (e.g. SSR's stale offset on the first frame after F5, before
+    // SSR's tick() re-inits the offset to the user's current config XYZ),
+    // exit the transition, then snap to the new target a few frames later.
+    @Unique private static final double TARGET_STABLE_EPSILON = 0.02;
 
     @Unique private boolean smooth_f5$initialized = false;
     @Unique private boolean smooth_f5$wasDetached = false;
     @Unique private boolean smooth_f5$wasMirrored = false;
+    @Unique private Vec3 smooth_f5$lastTargetPos = null;
 
     // Two distinct transition windows. We smooth ONLY while one of these is
     // active and exit on convergence (or timer) - outside transitions, the
@@ -104,6 +111,10 @@ public class CameraMixin {
 
         if (transitionStarted) {
             smooth_f5$transitionStartMs = System.currentTimeMillis();
+            // Force the first frame of the transition to fail the
+            // target-stable check so we don't accept a stale target from
+            // the previous perspective.
+            smooth_f5$lastTargetPos = null;
         }
 
         boolean inTransition = smooth_f5$inFpTransition || smooth_f5$inTpTransition;
@@ -155,16 +166,26 @@ public class CameraMixin {
         smooth_f5$smoothYaw   += smooth_f5$yawVel   * dt;
         smooth_f5$smoothPitch += smooth_f5$pitchVel * dt;
 
-        // Exit transition on EITHER convergence or timer cap. Convergence
-        // alone isn't enough: if the user mouse-turns mid-transition, the
-        // target keeps moving and the smoothed pose never settles within the
-        // epsilon → smoothing-induced lag would persist indefinitely. The
-        // timer guarantees the lag window is bounded to MAX_TRANSITION_MS.
+        // Exit transition on EITHER convergence (with target settled) or
+        // timer cap. Plain convergence is not enough: SSR's offset is
+        // briefly stale right after F5 (before its tick() re-inits the
+        // offset to the user's current config XYZ), so the spring can
+        // converge to a stale "default" position, exit, then snap to the
+        // new target a few frames later when SSR settles. Requiring the
+        // target to be stable frame-to-frame defers exit until SSR (or any
+        // other camera mod) finishes its own internal lerp.
+        //
+        // The timer cap remains so a moving target (mouse-turn mid-
+        // transition) can't keep smoothing engaged indefinitely.
         double posErr = smooth_f5$smoothPos.distanceTo(targetPos);
+        boolean targetStable = smooth_f5$lastTargetPos != null
+                && smooth_f5$lastTargetPos.distanceTo(targetPos) < TARGET_STABLE_EPSILON;
         boolean converged = posErr < POS_EPSILON
                 && Math.abs(yawDiff) < ROT_EPSILON
-                && Math.abs(pitchDiff) < ROT_EPSILON;
+                && Math.abs(pitchDiff) < ROT_EPSILON
+                && targetStable;
         boolean timedOut = (System.currentTimeMillis() - smooth_f5$transitionStartMs) > MAX_TRANSITION_MS;
+        smooth_f5$lastTargetPos = targetPos;
         if (inTransition && (converged || timedOut)) {
             smooth_f5$inFpTransition = false;
             smooth_f5$inTpTransition = false;
