@@ -34,17 +34,22 @@ public class CameraMixin {
     @Unique private static final double POS_EPSILON = 0.05;
     @Unique private static final float  ROT_EPSILON = 0.5f;
     @Unique private static final long   MAX_TRANSITION_MS = 1000L;
-    // Target must move less than this between consecutive frames to count as
-    // "settled". Without this, smooth-f5 can converge to a transient target
-    // value (e.g. SSR's stale offset on the first frame after F5, before
-    // SSR's tick() re-inits the offset to the user's current config XYZ),
-    // exit the transition, then snap to the new target a few frames later.
-    @Unique private static final double TARGET_STABLE_EPSILON = 0.02;
+    // Target must have moved less than this over the last STABILITY_WINDOW
+    // frames to count as "settled". Per-frame stability is not enough: when
+    // SSR is mid-settle on a sprint offset (or any other gradual lerp), the
+    // per-frame delta drops below a small epsilon while the cumulative
+    // movement over a few frames is still significant. A windowed check
+    // catches that case and keeps the transition active until SSR is truly
+    // done lerping.
+    @Unique private static final double TARGET_STABLE_EPSILON = 0.05;
+    @Unique private static final int    STABILITY_WINDOW = 20;
 
     @Unique private boolean smooth_f5$initialized = false;
     @Unique private boolean smooth_f5$wasDetached = false;
     @Unique private boolean smooth_f5$wasMirrored = false;
-    @Unique private Vec3 smooth_f5$lastTargetPos = null;
+    @Unique private Vec3[] smooth_f5$targetHistory = new Vec3[STABILITY_WINDOW];
+    @Unique private int    smooth_f5$historyIdx = 0;
+    @Unique private int    smooth_f5$historyFilled = 0;
 
     // Two distinct transition windows. We smooth ONLY while one of these is
     // active and exit on convergence (or timer) - outside transitions, the
@@ -111,10 +116,11 @@ public class CameraMixin {
 
         if (transitionStarted) {
             smooth_f5$transitionStartMs = System.currentTimeMillis();
-            // Force the first frame of the transition to fail the
-            // target-stable check so we don't accept a stale target from
-            // the previous perspective.
-            smooth_f5$lastTargetPos = null;
+            // Reset target history so the windowed stability check sees a
+            // fresh transition and won't accept a stale target from the
+            // previous perspective.
+            smooth_f5$historyFilled = 0;
+            smooth_f5$historyIdx = 0;
         }
 
         boolean inTransition = smooth_f5$inFpTransition || smooth_f5$inTpTransition;
@@ -166,26 +172,33 @@ public class CameraMixin {
         smooth_f5$smoothYaw   += smooth_f5$yawVel   * dt;
         smooth_f5$smoothPitch += smooth_f5$pitchVel * dt;
 
-        // Exit transition on EITHER convergence (with target settled) or
-        // timer cap. Plain convergence is not enough: SSR's offset is
-        // briefly stale right after F5 (before its tick() re-inits the
-        // offset to the user's current config XYZ), so the spring can
-        // converge to a stale "default" position, exit, then snap to the
-        // new target a few frames later when SSR settles. Requiring the
-        // target to be stable frame-to-frame defers exit until SSR (or any
-        // other camera mod) finishes its own internal lerp.
+        // Exit transition on EITHER convergence (with target settled over a
+        // window) or timer cap. Plain frame-to-frame stability isn't enough:
+        // when SSR is mid-settle on a sprint offset, the per-frame delta
+        // drops below a small epsilon a few frames before the offset has
+        // actually finished lerping. So we compare the current target to
+        // the target STABILITY_WINDOW frames ago - if it has moved more
+        // than the epsilon over that window, the target is still settling
+        // and we keep the transition active.
         //
         // The timer cap remains so a moving target (mouse-turn mid-
         // transition) can't keep smoothing engaged indefinitely.
         double posErr = smooth_f5$smoothPos.distanceTo(targetPos);
-        boolean targetStable = smooth_f5$lastTargetPos != null
-                && smooth_f5$lastTargetPos.distanceTo(targetPos) < TARGET_STABLE_EPSILON;
+        Vec3 oldestInWindow = smooth_f5$historyFilled >= STABILITY_WINDOW
+                ? smooth_f5$targetHistory[smooth_f5$historyIdx]
+                : null;
+        boolean targetStable = oldestInWindow != null
+                && oldestInWindow.distanceTo(targetPos) < TARGET_STABLE_EPSILON;
         boolean converged = posErr < POS_EPSILON
                 && Math.abs(yawDiff) < ROT_EPSILON
                 && Math.abs(pitchDiff) < ROT_EPSILON
                 && targetStable;
         boolean timedOut = (System.currentTimeMillis() - smooth_f5$transitionStartMs) > MAX_TRANSITION_MS;
-        smooth_f5$lastTargetPos = targetPos;
+
+        // Push current target into the ring buffer.
+        smooth_f5$targetHistory[smooth_f5$historyIdx] = targetPos;
+        smooth_f5$historyIdx = (smooth_f5$historyIdx + 1) % STABILITY_WINDOW;
+        if (smooth_f5$historyFilled < STABILITY_WINDOW) smooth_f5$historyFilled++;
         if (inTransition && (converged || timedOut)) {
             smooth_f5$inFpTransition = false;
             smooth_f5$inTpTransition = false;
