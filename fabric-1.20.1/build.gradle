@@ -1,0 +1,79 @@
+plugins {
+    id 'fabric-loom' version '1.11-SNAPSHOT'
+    id 'maven-publish'
+}
+
+version = fabric_mod_version
+group = maven_group
+
+base {
+    archivesName = "${archives_name}-fabric-${fabric_minecraft_version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
+    withSourcesJar()
+}
+
+sourceSets.main {
+    java.srcDir '../common/src/main/java'
+    resources.srcDir '../common/src/main/resources'
+}
+
+repositories {
+    maven {
+        name = 'Fuzs Mod Resources'
+        url = 'https://raw.githubusercontent.com/Fuzss/modresources/main/maven/'
+    }
+    maven {
+        name = 'ParchmentMC'
+        url = 'https://maven.parchmentmc.org'
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${fabric_minecraft_version}"
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${fabric_minecraft_version}:${parchment_fabric_version}@zip")
+    }
+    modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    modImplementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${forgeconfigapiport_fabric_version}"
+}
+
+loom {
+    // mixins.json (shared from common/) hardcodes refmap as
+    // "seramicx_smooth_f5.refmap.json". Without this override loom names the
+    // generated refmap after archivesBaseName
+    // (seramicx_smooth_f5-fabric-1.20.1-refmap.json), and Mixin fails to
+    // resolve mojang -> intermediary mappings at runtime, silently disabling
+    // the mod.
+    mixin {
+        defaultRefmapName = 'seramicx_smooth_f5.refmap.json'
+    }
+
+    runs {
+        client {
+            client()
+            ideConfigGenerated = true
+            runDir = 'run'
+        }
+    }
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    inputs.property "version", fabric_mod_version
+    filesMatching("fabric.mod.json") {
+        expand "version": fabric_mod_version
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+                'MixinConfigs': 'seramicx_smooth_f5.mixins.json'
+        ])
+    }
+}
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }

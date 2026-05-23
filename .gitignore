@@ -1,12 +1,8 @@
 # Project exclude paths
-/.gradle/
+.gradle/
 /.idea/
-/build/
-/common/.gradle/
-/common/build/
-/forge/.gradle/
-/forge/build/
-/forge/run/
+build/
+run/
 
 # IDEs
 *.iml
