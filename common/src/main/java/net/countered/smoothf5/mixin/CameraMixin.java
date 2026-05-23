@@ -12,12 +12,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-// On F5 press, capture the world-space offset between last frame's rendered
-// camera and vanilla's new target. Each frame thereafter, place the camera at
-// vanilla's target plus that offset scaled by a cubic ease-out over
-// TRANSITION_MS. Vanilla's target tracks the player every frame, so the
-// player velocity never feeds back into the smoothing - sprint/elytra/fly
-// all stay decoupled from the perspective ease.
 @Mixin(Camera.class)
 public class CameraMixin {
 
@@ -27,9 +21,6 @@ public class CameraMixin {
     @Unique private long  smooth_f5$transitionStartMs = 0L;
     @Unique private boolean smooth_f5$inTransition    = false;
 
-    // What we wrote last frame. On a chained F5 press (a previous transition
-    // still decaying), we capture from this instead of vanilla's target so
-    // the new ease starts where the camera actually was.
     @Unique private Vec3  smooth_f5$lastFrameRendered      = Vec3.ZERO;
     @Unique private float smooth_f5$lastFrameRenderedYaw   = 0F;
     @Unique private float smooth_f5$lastFrameRenderedPitch = 0F;
@@ -59,9 +50,6 @@ public class CameraMixin {
             return;
         }
 
-        // Track both `detached` (3rd<->1st) and `thirdPersonReverse` (3rd
-        // back<->front, also flips through SSR's shoulder mode which uses
-        // CameraType.THIRD_PERSON_BACK with mirrored=false).
         if (smooth_f5$wasDetached != detached
          || smooth_f5$wasMirrored != thirdPersonReverse) {
             smooth_f5$posLag   = smooth_f5$lastFrameRendered.subtract(targetPos);

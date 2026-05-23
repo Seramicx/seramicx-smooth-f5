@@ -6,9 +6,6 @@ import net.countered.smoothf5.SmoothF5ConfigState;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.config.ModConfig;
 
-// Fabric config wrapper. Uses Forge Config API Port to drive the same
-// ForgeConfigSpec schema as the Forge build, then pushes loaded values into
-// the shared SmoothF5ConfigState.
 public final class SmoothF5Config {
 
     public static final ForgeConfigSpec CLIENT_SPEC;

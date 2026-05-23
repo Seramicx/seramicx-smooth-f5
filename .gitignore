@@ -1,26 +1,7 @@
-# Project exclude paths
 .gradle/
-/.idea/
 build/
-run/
-
-# IDEs
+out/
+.idea/
 *.iml
 *.iws
-.project
-.classpath
-.settings/
-.vscode/
-
-# OS Files
-.DS_Store
-Thumbs.db
-
-# Debug scripts and scratch work
-*.py
-*.patch
-*.sh
-docs/
-investigation_extracted/
-raw/
-release-notes-*.md
+run/

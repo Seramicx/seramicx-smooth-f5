@@ -5,9 +5,6 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-// NeoForge ModConfigSpec wrapper (1.21.1 rename of ForgeConfigSpec). Pushes
-// loaded values into the loader-agnostic SmoothF5ConfigState that the mixin
-// reads.
 public final class SmoothF5Config {
 
     public static final ModConfigSpec CLIENT_SPEC;

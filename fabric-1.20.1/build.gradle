@@ -42,12 +42,6 @@ dependencies {
 }
 
 loom {
-    // mixins.json (shared from common/) hardcodes refmap as
-    // "seramicx_smooth_f5.refmap.json". Without this override loom names the
-    // generated refmap after archivesBaseName
-    // (seramicx_smooth_f5-fabric-1.20.1-refmap.json), and Mixin fails to
-    // resolve mojang -> intermediary mappings at runtime, silently disabling
-    // the mod.
     mixin {
         defaultRefmapName = 'seramicx_smooth_f5.refmap.json'
     }
