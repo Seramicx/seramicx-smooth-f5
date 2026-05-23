@@ -1,4 +1,4 @@
-package net.countered.smoothf5;
+package net.countered.smoothf5.forge;
 
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;

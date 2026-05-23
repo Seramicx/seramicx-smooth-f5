@@ -1,83 +1,9 @@
-plugins {
-    id 'eclipse'
-    id 'idea'
-    id 'maven-publish'
-    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
-    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
-    id 'org.spongepowered.mixin' version '0.7.+'
-}
+// Multi-loader root. Each loader subproject (forge-1.20.1/, fabric-1.20.1/,
+// neoforge-1.21.1/) has its own build.gradle and pulls shared mixin source from
+// common/. There is no aggregating Java compile at the root.
 
-version = mod_version
-group = maven_group
-
-base {
-    archivesName = archives_name
-}
-
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
-
-minecraft {
-    mappings channel: 'parchment', version: "2023.09.03-${minecraft_version}"
-    copyIdeResources = true
-
-    runs {
-        configureEach {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-            arg '-mixin.config=seramicx_smooth_f5.mixins.json'
-
-            mods {
-                "seramicx_smooth_f5" {
-                    source sourceSets.main
-                }
-            }
-        }
-
-        client {
-            property 'forge.enabledGameTestNamespaces', 'seramicx_smooth_f5'
-        }
+subprojects {
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
     }
 }
-
-mixin {
-    add sourceSets.main, "seramicx_smooth_f5.refmap.json"
-    config "seramicx_smooth_f5.mixins.json"
-}
-
-dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
-}
-
-tasks.named('processResources', ProcessResources).configure {
-    var replaceProperties = [
-            mod_version: mod_version
-    ]
-    inputs.properties replaceProperties
-
-    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
-        expand replaceProperties + [project: project, version: mod_version]
-    }
-}
-
-tasks.named('jar', Jar).configure {
-    manifest {
-        attributes([
-                'Specification-Title'     : 'seramicx_smooth_f5',
-                'Specification-Vendor'    : 'Seramicx',
-                'Specification-Version'   : '1',
-                'Implementation-Title'    : project.name,
-                'Implementation-Version'  : project.jar.archiveVersion,
-                'Implementation-Vendor'   : 'Seramicx',
-                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                'MixinConfigs'            : 'seramicx_smooth_f5.mixins.json'
-        ])
-    }
-
-    finalizedBy 'reobfJar'
-}
-
-tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }

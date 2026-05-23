@@ -1,0 +1,79 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'eclipse'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.74'
+}
+
+version = neoforge_mod_version
+group = maven_group
+
+base {
+    archivesName = "${archives_name}-neoforge-${neoforge_minecraft_version}"
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+sourceSets.main {
+    java.srcDir '../common/src/main/java'
+    resources.srcDir '../common/src/main/resources'
+}
+
+repositories {
+    maven {
+        name = 'ParchmentMC'
+        url = 'https://maven.parchmentmc.org'
+    }
+}
+
+neoForge {
+    version = neoforge_version
+
+    parchment {
+        mappingsVersion = parchment_neoforge_mappings
+        minecraftVersion = parchment_neoforge_minecraft
+    }
+
+    runs {
+        client {
+            client()
+            gameDirectory = file('run')
+        }
+    }
+
+    mods {
+        "seramicx_smooth_f5" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+dependencies {
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [mod_version: neoforge_mod_version]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project, version: neoforge_mod_version]
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+                'Specification-Title'     : 'seramicx_smooth_f5',
+                'Specification-Vendor'    : 'Seramicx',
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : project.name,
+                'Implementation-Version'  : project.jar.archiveVersion,
+                'Implementation-Vendor'   : 'Seramicx',
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                'MixinConfigs'            : 'seramicx_smooth_f5.mixins.json'
+        ])
+    }
+}
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }

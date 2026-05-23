@@ -26,18 +26,28 @@ A small fork of [Smooth F5](https://www.curseforge.com/minecraft/mc-mods/smooth-
 
 ## Requires
 
-- Minecraft 1.20.1
-- Forge 47+
+Three loader/version targets are published from this repo:
 
-No other dependencies.
+| Target | Minecraft | Loader | Extra deps |
+| --- | --- | --- | --- |
+| Forge | 1.20.1 | Forge 47+ | none |
+| Fabric | 1.20.1 | Fabric Loader 0.15+ | [Forge Config API Port](https://modrinth.com/mod/forge-config-api-port) (Fabric build) |
+| NeoForge | 1.21.1 | NeoForge 21.1+ | none |
 
 ## Manual install
 
-1. Install Forge 47+ for Minecraft 1.20.1.
-2. Download the jar from the [latest release](https://github.com/Seramicx/seramicx-smooth-f5/releases/latest).
+1. Install the relevant loader for your Minecraft version.
+2. Download the matching jar from the [latest release](https://github.com/Seramicx/seramicx-smooth-f5/releases/latest):
+   - `seramicx-smooth-f5-forge-1.20.1-*.jar` for Forge
+   - `seramicx-smooth-f5-fabric-1.20.1-*.jar` for Fabric (also install Forge Config API Port)
+   - `seramicx-smooth-f5-neoforge-1.21.1-*.jar` for NeoForge
 3. Drop it into your `.minecraft/mods/` folder.
 
 If upstream Smooth F5 is also installed, remove it — they conflict.
+
+## Build from source
+
+`./gradlew build` produces all three jars in `<subproject>/build/libs/`. Build a single target with e.g. `./gradlew :fabric-1.20.1:build`.
 
 ## Credits
 

@@ -1,27 +1,20 @@
-package net.countered.smoothf5;
+package net.countered.smoothf5.neoforge;
 
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
+import net.countered.smoothf5.SmoothF5ConfigState;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.event.config.ModConfigEvent;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
-/**
- * Forge {@link ForgeConfigSpec} + the runtime values the mixin reads.
- *
- * <p>Single config knob: {@code transition_duration_ms} — how long an F5 ease
- * lasts. Default 500ms. The new no-lag design has nothing to tune for
- * "smoothness" because the camera always tracks the player perfectly; the only
- * meaningful parameter is how fast the perspective change eases in.
- */
+// NeoForge ModConfigSpec wrapper (1.21.1 rename of ForgeConfigSpec). Pushes
+// loaded values into the loader-agnostic SmoothF5ConfigState that the mixin
+// reads.
 public final class SmoothF5Config {
 
-    public static final ForgeConfigSpec CLIENT_SPEC;
-    private static final ForgeConfigSpec.IntValue TRANSITION_DURATION_MS;
-
-    /** Runtime value the mixin reads each frame. Loaded from config below. */
-    public static volatile int transitionDurationMs = 500;
+    public static final ModConfigSpec CLIENT_SPEC;
+    private static final ModConfigSpec.IntValue TRANSITION_DURATION_MS;
 
     static {
-        ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder b = new ModConfigSpec.Builder();
         b.comment("Smoothing").push("smoothing");
 
         TRANSITION_DURATION_MS = b
@@ -44,14 +37,14 @@ public final class SmoothF5Config {
     @SubscribeEvent
     public static void onLoad(ModConfigEvent.Loading event) {
         if (event.getConfig().getSpec() == CLIENT_SPEC) {
-            transitionDurationMs = TRANSITION_DURATION_MS.get();
+            SmoothF5ConfigState.transitionDurationMs = TRANSITION_DURATION_MS.get();
         }
     }
 
     @SubscribeEvent
     public static void onReload(ModConfigEvent.Reloading event) {
         if (event.getConfig().getSpec() == CLIENT_SPEC) {
-            transitionDurationMs = TRANSITION_DURATION_MS.get();
+            SmoothF5ConfigState.transitionDurationMs = TRANSITION_DURATION_MS.get();
         }
     }
 }

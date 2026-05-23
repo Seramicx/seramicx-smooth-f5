@@ -1,0 +1,29 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "CC0-1.0"
+
+[[mods]]
+modId = "seramicx_smooth_f5"
+version = "${version}"
+displayName = "Seramicx's Smooth F5"
+authors = "Seramicx (fork of Countered!)"
+description = '''
+Fork of Smooth F5 with bidirectional smoothing - smooths the F5 transition in BOTH directions (1st <-> 3rd person), including when Shoulder Surfing Reloaded is loaded.
+'''
+
+[[mixins]]
+config = "seramicx_smooth_f5.mixins.json"
+
+[[dependencies.seramicx_smooth_f5]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.seramicx_smooth_f5]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.22)"
+ordering = "NONE"
+side = "BOTH"

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "seramicx_smooth_f5",
+  "version": "${version}",
+  "name": "Seramicx's Smooth F5",
+  "description": "Fork of Smooth F5 with bidirectional smoothing - smooths the F5 transition in BOTH directions (1st <-> 3rd person), including when Shoulder Surfing Reloaded is loaded.",
+  "authors": ["Seramicx (fork of Countered!)"],
+  "license": "CC0-1.0",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["net.countered.smoothf5.fabric.SmoothF5Client"]
+  },
+  "mixins": [
+    {
+      "config": "seramicx_smooth_f5.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "~1.20.1",
+    "java": ">=17",
+    "forgeconfigapiport": ">=8.0.0"
+  }
+}
