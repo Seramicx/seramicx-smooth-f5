@@ -1,0 +1,73 @@
+plugins {
+    id 'fabric-loom' version '1.11-SNAPSHOT'
+    id 'maven-publish'
+}
+
+version = fabric_121_mod_version
+group = maven_group
+
+base {
+    archivesName = "${archives_name}-fabric-${fabric_121_minecraft_version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+sourceSets.main {
+    java.srcDir '../common/src/main/java'
+    resources.srcDir '../common/src/main/resources'
+}
+
+repositories {
+    maven {
+        name = 'Fuzs Mod Resources'
+        url = 'https://raw.githubusercontent.com/Fuzss/modresources/main/maven/'
+    }
+    maven {
+        name = 'ParchmentMC'
+        url = 'https://maven.parchmentmc.org'
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${fabric_121_minecraft_version}"
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${parchment_fabric_121_minecraft}:${parchment_fabric_121_version}@zip")
+    }
+    modImplementation "net.fabricmc:fabric-loader:${fabric_121_loader_version}"
+    modImplementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${forgeconfigapiport_fabric_121_version}"
+}
+
+loom {
+    mixin {
+        defaultRefmapName = 'seramicx_smooth_f5.refmap.json'
+    }
+
+    runs {
+        client {
+            client()
+            ideConfigGenerated = true
+            runDir = 'run'
+        }
+    }
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    inputs.property "version", fabric_121_mod_version
+    filesMatching("fabric.mod.json") {
+        expand "version": fabric_121_mod_version
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+                'MixinConfigs': 'seramicx_smooth_f5.mixins.json'
+        ])
+    }
+}
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
