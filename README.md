@@ -1,48 +1,57 @@
-# Smooth F5
+# Seramicx Smooth F5
 
 ![Showcase](assets/showcase.gif)
 
-A fork of [Smooth F5](https://www.curseforge.com/minecraft/mc-mods/smooth-f5) by Countered. Available for Forge 1.20.1, Fabric 1.20.1, and NeoForge 1.21.1.
+Fork of [Smooth F5](https://www.curseforge.com/minecraft/mc-mods/smooth-f5) by Countered. Smooth third-person camera when you press F5.
 
-## What this fork changes vs upstream
+## Loaders
 
-- Smooths the F5 transition in both directions, not just first to third.
-- Smooths every step of the F5 cycle when Shoulder Surfing Reloaded is installed (first, vanilla third back, vanilla third front, SSR shoulder, first).
-- The camera no longer lags behind the player when you press F5 while sprinting, flying, or gliding.
-- No constant smoothing running in third person. Steady state is just vanilla.
-- Fixes the occasional 359 degree spin when the F5 press crosses the yaw wrap.
+| Loader | Minecraft | Mod version | Extra |
+|---|---|---|---|
+| Forge | 1.20.1 | 1.1.1 | none |
+| Fabric | 1.20.1 | 1.0.0 | Forge Config API Port |
+| Fabric | 1.21.1 | 1.0.0 | Forge Config API Port |
+| NeoForge | 1.21.1 | 1.0.0 | none |
+
+## What changed from upstream
+
+- Smooth camera when going first person to third and back, not only first to third.
+- With [Shoulder Surfing Reloaded](https://www.curseforge.com/minecraft/mc-mods/shoulder-surfing-reloaded), every step of the F5 cycle is smoothed (first, vanilla third, SSR shoulder, back to first).
+- No camera lag behind you if you hit F5 while sprinting, flying, or gliding.
+- Third person while you are not pressing F5 stays vanilla. No always-on smoothing.
+- Fixes the rare full camera spin on some F5 presses.
 
 ## Compatibility
 
-- Vanilla third person: works.
-- Shoulder Surfing Reloaded, including custom sprint offsets: works.
-- Epic Fight TPS mode or lock-on: no-op. Epic Fight runs its own camera, so this mod stays out of the way.
+- Vanilla third person
+- Shoulder Surfing Reloaded, including custom sprint offsets
+- Epic Fight TPS or lock-on: does nothing while Epic Fight owns the camera
 
 ## Config
 
 `config/seramicx_smooth_f5-client.toml`:
 
-- `transition_duration_ms`: length of the F5 ease in milliseconds. Default 500, range 50 to 5000.
+- `transition_duration_ms` - F5 transition length in ms (default 500, range 50 to 5000)
 
-## Downloads
+## Install
 
-| Loader | Minecraft | Extra deps |
-| --- | --- | --- |
-| Forge 47+ | 1.20.1 | none |
-| Fabric Loader 0.15+ | 1.20.1 | [Forge Config API Port](https://modrinth.com/mod/forge-config-api-port) |
-| NeoForge 21.1+ | 1.21.1 | none |
+1. Pick the jar for your loader and Minecraft version from [releases](https://github.com/Seramicx/seramicx-smooth-f5/releases/latest).
+2. Drop it in `mods/`.
+3. Remove Countered's Smooth F5 if it is installed. Only one Smooth F5 at a time.
 
-Grab the matching jar from the [latest release](https://github.com/Seramicx/seramicx-smooth-f5/releases/latest) and drop it in `.minecraft/mods/`.
+Fabric 1.20.1 and 1.21.1 also need Fabric API and [Forge Config API Port](https://modrinth.com/mod/forge-config-api-port).
 
-If the original Smooth F5 is installed, remove it. They conflict.
+## Build
 
-## Build from source
+```
+./gradlew build
+```
 
-`./gradlew build` produces all three jars in `<subproject>/build/libs/`. Build a single target with `./gradlew :fabric-1.20.1:build` (or `:forge-1.20.1:build`, `:neoforge-1.21.1:build`).
+Single target: `./gradlew :forge-1.20.1:build`, `:fabric-1.20.1:build`, `:fabric-1.21.1:build`, or `:neoforge-1.21.1:build`. Jars land in that subproject's `build/libs/`.
 
 ## Credits
 
-Original mod by [Countered](https://www.curseforge.com/members/countered/projects). This fork keeps the original `net.countered.smoothf5` package.
+Original mod by [Countered](https://www.curseforge.com/members/countered/projects). This fork keeps the `net.countered.smoothf5` package.
 
 ## License
 
