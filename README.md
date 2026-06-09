@@ -8,6 +8,7 @@ Fork of [Smooth F5](https://www.curseforge.com/minecraft/mc-mods/smooth-f5) by C
 
 | Loader | Minecraft | Mod version | Extra |
 |---|---|---|---|
+| Forge | 1.19.2 | 1.0.0 | none |
 | Forge | 1.20.1 | 1.1.1 | none |
 | Fabric | 1.20.1 | 1.0.0 | Forge Config API Port |
 | Fabric | 1.21.1 | 1.0.0 | Forge Config API Port |
